@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Carro Robótico</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; margin: 0; background-color: #f0f0f0; padding: 10px; box-sizing: border-box; }
+        #video-container { width: 100%; max-width: 640px; aspect-ratio: 4 / 3; background-color: #333; border: 2px solid #555; margin-bottom: 20px; overflow: hidden; }
+        #camera-feed { width: 100%; height: 100%; object-fit: contain; }
+        .controls-section { width: 100%; max-width: 400px; background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .direction-buttons { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .direction-button { width: 80px; height: 80px; font-size: 1.5em; background-color: #007bff; color: white; border: none; border-radius: 50%; cursor: pointer; transition: background-color 0.2s; display: flex; justify-content: center; align-items: center; }
+        .direction-button:active { background-color: #0056b3; }
+        #up { grid-area: up; } #down { grid-area: down; } #left { grid-area: left; } #right { grid-area: right; }
+        .mode-buttons { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .mode-button { padding: 15px; font-size: 1.1em; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; width: 100%; box-sizing: border-box; }
+        .mode-button:active { background-color: #218838; }
+    </style>
+</head>
+<body>
+    <h1>Control Robot V2 - Servidor PC</h1>
+    <div id="video-container">
+        <img id="camera-feed" src="/video_feed" alt="Feed de la cámara">
+    </div>
+
+    <div class="controls-section">
+        <h2>Controles de Dirección</h2>
+        <div class="direction-buttons">
+            <button class="direction-button" id="up">↑</button>
+            <button class="direction-button" id="left">←</button>
+            <button class="direction-button" id="right">→</button>
+            <button class="direction-button" id="down">↓</button>
+        </div>
+    </div>
+
+    <div class="controls-section">
+        <h2>Modo de Control</h2>
+        <div class="mode-buttons">
+            <button class="mode-button" id="mode-carro">Controlar Carro</button>
+            <button class="mode-button" id="mode-brazo">Controlar Brazo</button>
+            <button class="mode-button" id="mode-ei">Activar/Desactivar Electroimán</button>
+        </div>
+    </div>
+
+    <script>
+        function sendCommand(command) {
+            console.log("Enviando comando:", command);
+            fetch('/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: command }),
+            })
+            .then(response => response.json())
+            .then(data => console.log('Respuesta del servidor:', data))
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Asignar eventos a los botones de dirección (con parada al soltar)
+        const buttons = {
+            'up': 'adelante', 'down': 'atras',
+            'left': 'izquierda', 'right': 'derecha'
+        };
+        for (const [id, cmd] of Object.entries(buttons)) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('mousedown', () => sendCommand(cmd));
+            btn.addEventListener('mouseup', () => sendCommand('stop'));
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); sendCommand(cmd); });
+            btn.addEventListener('touchend', () => sendCommand('stop'));
+        }
+
+        // Asignar eventos a los botones de modo de control
+        document.getElementById('mode-carro').addEventListener('click', () => sendCommand('carro'));
+        document.getElementById('mode-brazo').addEventListener('click', () => sendCommand('brazo'));
+        
+        const electroimanButton = document.getElementById('mode-ei');
+        let isElectroimanActive = false;
+        electroimanButton.addEventListener('click', () => {
+            isElectroimanActive = !isElectroimanActive;
+            if (isElectroimanActive) {
+                sendCommand('recojer');
+                electroimanButton.textContent = 'Desactivar Electroimán';
+                electroimanButton.style.backgroundColor = '#dc3545'; // Rojo
+            } else {
+                sendCommand('soltar');
+                electroimanButton.textContent = 'Activar Electroimán';
+                electroimanButton.style.backgroundColor = '#28a745'; // Verde
+            }
+        });
+
+    </script>
+</body>
+</html>
